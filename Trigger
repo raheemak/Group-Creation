@@ -1,0 +1,124 @@
+function addUsers(){
+  
+  //open spreadsheet and find trigger id
+  var triggers = ScriptApp.getProjectTriggers();
+  var  currTriggerId;
+  
+  for (var x = 0 ; x< triggers.length; x++ ){
+    if (triggers[x].getEventType() == "CLOCK"){
+      currentTrigger = triggers[x];
+      currTriggerId = currentTrigger.getUniqueId();
+    }
+  }
+  
+  //open sheet associated with trigger
+  triggerSheet = triggerSSheet.getSheetByName("Triggers").getDataRange().getDisplayValues();
+  for (var x = 0; x<triggerSheet.length; x++){
+    if (triggerSheet[x][0] == currTriggerId){
+      currentGroup = triggerSheet [x][1];
+    }
+  }
+  
+  //read vals
+  var allValues = triggerSSheet.getSheetByName(currentGroup).getDataRange().getDisplayValues();
+  var addedValues = triggerSSheet.getSheetByName(currentGroup+"_vals");
+  groupName = currentGroup;
+  
+  var x = addedValues.getDataRange().getDisplayValues().length
+  var done = false;
+  var temp = x
+  
+  try {
+    for (x; (x < temp+ 150 && x < allValues.length); x++){
+      addUser_(allValues[x][0], "MEMBER");
+      addedValues.appendRow([allValues[x][0]]);
+      if (x== allValues.length -1)
+        done = true;
+    };
+    
+    //create new trigger
+    
+    if (!done){
+      createTrigger("addUsers");
+    }
+    
+    else {
+    createTrigger("endProcess");
+    }
+    
+    //delete trigger
+    ScriptApp.deleteTrigger(currentTrigger)
+  }
+  
+  
+  catch (e){
+    MailApp.sendEmail("ME@ME.COM", "error", e.toString())
+    if (x== allValues.length -1)
+      done = true;
+    if (!done)
+      createTrigger("addUsers");
+    createTrigger("endProcess");
+    ScriptApp.deleteTrigger(currentTrigger)
+  }
+  
+}
+
+
+function endProcess(){
+  
+  var triggers = ScriptApp.getProjectTriggers();
+  var  currTriggerId;
+  
+  for (var x = 0 ; x< triggers.length; x++ ){
+    if (triggers[x].getEventType() == "CLOCK"){
+      currentTrigger = triggers[x];
+      currTriggerId = currentTrigger.getUniqueId();
+    }
+  }
+  
+  //open sheet associated with trigger
+  var triggerSheet = triggerSSheet.getSheetByName("Triggers").getDataRange().getDisplayValues();
+  for (var x = 0; x<triggerSheet.length; x++){
+    if (triggerSheet[x][0] == currTriggerId){
+      currentGroup = triggerSheet [x][1];
+    }
+  }
+  
+  //read vals
+  var groupSheet = triggerSSheet.getSheetByName(currentGroup);
+  var groupVals = groupSheet.getDataRange().getDisplayValues();
+  
+  groupName = currentGroup;
+  validOwners = groupVals[0][3].split("\n");
+  validMembers = (groupVals.length - 1) + " members added..." ;
+  invalidOwners = groupVals[0][4];
+  invalidMembers = groupVals[0][5];
+  name = groupVals[0][0];
+  description = groupVals[0][1];
+  respondentEmail =groupVals[0][2];
+  
+  createPDF_();
+  ScriptApp.deleteTrigger(currentTrigger)
+}
+
+function createTrigger(type){
+  var triggerid;
+  if (type == "addUsers"){
+    triggerid = ScriptApp.newTrigger("addUsers").timeBased().after(70000).create().getUniqueId();
+  }
+  else if (type=="endProcess"){
+    triggerid = ScriptApp.newTrigger("endProcess").timeBased().after(70000).create().getUniqueId();
+  }
+  triggerSSheet.getSheetByName("Triggers").appendRow([triggerid, currentGroup, type]);
+  return triggerid;
+}
+
+function firstTrigger(){  
+  triggerSSheet.insertSheet(groupName).appendRow([name, description, respondentEmail,stringify_(validOwners), stringify_(invalidOwners), stringify_(invalidMembers)]);
+  triggerSSheet.insertSheet(groupName+"_vals").appendRow([name, description, respondentEmail,stringify_(validOwners), stringify_(invalidOwners), stringify_(invalidMembers)]);
+
+  var data = range.getValues();
+  triggerSSheet.getSheetByName(groupName).getRange(2, 1, size).setValues(data); 
+  createTrigger("addUsers");
+}
+
