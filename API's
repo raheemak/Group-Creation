@@ -1,0 +1,115 @@
+function getService() {
+  // Create a new service with the given name. The name will be used when
+  // persisting the authorized token, so ensure it is unique within the
+  // scope of the property store.
+  
+  var token =  OAuth2.createService('blogger')
+  .setAuthorizationBaseUrl('https://accounts.google.com/o/oauth2/auth')
+  .setTokenUrl('https://accounts.google.com/o/oauth2/token')
+  .setClientId(CLIENT_ID)
+  .setClientSecret(CLIENT_SECRET)
+  .setCallbackFunction('authCallback')
+  .setPropertyStore(PropertiesService.getUserProperties())
+  .setScope(["https://www.googleapis.com/auth/apps.groups.settings", "https://www.googleapis.com/auth/admin.directory.group"])
+  .setParam('login_hint', Session.getActiveUser().getEmail())
+  .setParam('access_type', 'offline')
+  .setParam('approval_prompt', 'force');
+  return token;
+  
+}
+///only need to be run first time running code !!! 
+function authCallback(request) {
+  var groupService = getService();
+  var isAuthorized = groupService.handleCallback(request);
+  if (isAuthorized) {
+    return HtmlService.createHtmlOutput('Success! You can close this tab.');
+  } else {
+    return HtmlService.createHtmlOutput('Denied. You can close this tab');
+  }
+}
+
+
+function makeGroup_(){
+  var groupMade= false;
+  whichScope = 1;
+  var service = getService();
+  if (service.hasAccess()){
+    var api = "https://www.googleapis.com/admin/directory/v1/groups";
+    
+    var jsonRequest = {
+      "email": groupName + domain,
+      "name": name, 
+      "description": description
+    }
+    
+    headers = {
+      "Authorization": "Bearer " + getService().getAccessToken()
+    };
+    
+    var options = {
+      "headers": headers,
+      "method" : "POST",
+      "muteHttpExceptions": true,
+      "contentType" : "application/json",
+      "payload" : JSON.stringify(jsonRequest)
+    }   
+    
+    //reads Id of whether or not execution was successful: 200-299 means group was created
+    var requestID = UrlFetchApp.fetch(api, options).getResponseCode();
+    groupMade = (requestID>=200 && requestID<300);  
+    
+    Logger.log (requestID)
+  }
+  
+  else {
+    var authorizationUrl = service.getAuthorizationUrl();
+    Logger.log('Open the following URL and re-run the script: %s',
+               authorizationUrl); 
+  }
+  
+  return groupMade;
+}
+
+function changeSettings_(){
+  var api  = "https://www.googleapis.com/groups/v1/groups/" + groupName + domain;
+  Logger.log (api);
+  var jsonRequest = {
+    "whoCanContactOwner": "ALL_MANAGERS_CAN_CONTACT", 
+    "whoCanViewMembership": "ALL_MANAGERS_CAN_VIEW",
+    "whoCanPostMessage" : "ALL_MANAGERS_CAN_POST",
+    "allowWebPosting" : "false",
+    "whoCanJoin": "INVITED_CAN_JOIN",
+    "whoCanContactOwner": "ALL_MANAGERS_CAN_CONTACT",
+    "showInGroupDirectory": "false",
+    "whoCanViewGroup": "ALL_MEMBERS_CAN_VIEW", 
+    "whoCanInvite": "NONE_CAN_INVITE", 
+    "whoCanAdd": "NONE_CAN_ADD", 
+    "messageModerationLevel": "MODERATE_NONE", 
+    "replyTo" : "REPLY_TO_CUSTOM", 
+    "customReplyTo" : "noreply@fordham.edu", 
+    "allowGoogleCommunication" : "false", 
+    "membersCanPostAsTheGroup" : "false"
+  }
+  
+  var options = {
+    "headers": headers,
+    "method" : "PUT",
+    "muteHttpExceptions": true,
+    "contentType" : "application/json",
+    "payload" : JSON.stringify(jsonRequest)
+  }   
+  
+  var responseCode = UrlFetchApp.fetch (api, options).getResponseCode();  
+  Logger.log ("change!: "+ responseCode);
+}
+
+
+function addUser_(email, type) {
+  var userEmail = email
+  var member = {
+    email: email,
+    role: type
+  };
+  member = AdminDirectory.Members.insert(member, groupName+domain);
+ // Logger.log('User %s added as a member of group %s.', userEmail, groupEmail);
+}
