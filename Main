@@ -1,0 +1,134 @@
+function makeGroupFormSubmitTest(e){
+  var made = false;
+  var found = false;
+  respondentEmail = e.response.getRespondentEmail();
+   for (var x = 0; x< access.length; x++){
+    if (respondentEmail == access[x][0]){
+      found = true;
+      break;
+    }
+  }
+  
+  if (found){ 
+    var responses = e.response.getItemResponses(); 
+    var title, response;
+    
+    for (var x = 0 ; x < responses.length; x++){
+      title = responses[x].getItem().getTitle();
+      response = responses[x].getResponse();
+      
+      switch (title){
+        case "Google sheets link":
+          link = response;
+          link = fileTransfer(link);
+          break;
+        case "Group Email":
+          groupName = response;
+          groupName= groupName.trim();
+          groupName = groupName.replace (/ /g, "_");
+          groupName =  groupName.replace (/@/g, "");
+          break;
+        case "Owners":
+          groupOwners = response.split(",");
+          Logger.log (groupOwners);
+          break;   
+        case "Group Description":
+          description = response;
+          break;
+        case "Group Name":
+          name = response;
+          break;
+      } 
+    } 
+    
+    var options = {
+      "noReply":true,
+      "htmlBody": "<font face='calibri'>Your request to create a group has been recieved.<br>We will email you once your group has been created!</font><br><br><img width ='100' src = 'https://example123123456.files.wordpress.com/2016/07/screen-shot-2016-07-27-at-9-15-51-am.png'><br><b>&nbsp;&nbsp;Cloud Agile Systems Management Team</b><br>&nbsp;&nbsp;fit_casm@fordham.edu</font>",
+    }
+    
+    GmailApp.sendEmail(respondentEmail, "Request Recieved", " ",options);
+    
+    
+    var badEmail = true;
+    var x =  1;
+    while (badEmail){
+      try{
+        // if this succeeds then email already exists
+        GroupsApp.getGroupByEmail(groupName + domain)
+        groupName = groupName + "_" + x;
+        x++;
+      }
+      catch (e){
+        badEmail = false;
+        //if the exception thrown is because group does not exist: 
+        if (e.toString().search ("Cannot find a group named: ")){
+          //then make group 
+          made = makeGroup_();
+        }
+      }
+    } 
+    
+    currentGroup = groupName;
+    
+    //if group is successfully made, then add users to group 
+    if (made){
+      var allEmails = validate_(groupOwners);
+      validOwners =allEmails[0];
+      invalidOwners = allEmails[1];
+      openSpreadsheet_();
+      
+      for (var x = 0 ; x < validOwners.length; x++){
+        addUser_(validOwners[x], "OWNER");
+      };
+      
+      firstTrigger()
+    }
+  }
+  
+  else {
+    var options = {
+      "noReply":true,
+      "htmlBody": "<font face='calibri'>Your request to create a group has been recieved.<br>Because you do not have access to create groups, your request has not been proccessed.<br>Please email fit_casm@fordham.edu if you wish to resolve this issue.</font><br><br><img width ='100' src = 'https://example123123456.files.wordpress.com/2016/07/screen-shot-2016-07-27-at-9-15-51-am.png'><br><b>&nbsp;&nbsp;Cloud Agile Systems Management Team</b><br>&nbsp;&nbsp;fit_casm@fordham.edu</font>",
+    }
+    
+    GmailApp.sendEmail(respondentEmail, "Request Recieved", " ",options);
+
+  }
+}
+
+
+//will open spreadsheet and get email addresses
+function openSpreadsheet_(){
+  var sheet = SpreadsheetApp.openByUrl(link).getActiveSheet();
+  var data = sheet.getDataRange();
+  var values =[];
+  
+  for (var x = 1; x <= sheet.getLastRow() ; x++){
+    values.push(data.getCell(x, 1).getDisplayValue());
+  }
+  
+  var allEmails = validate_(values);
+  validMembers = allEmails[0];
+  invalidMembers = allEmails[1];
+
+  size = sheet.getLastRow();
+   range = sheet.getRange(1, 1, size);  
+  DriveApp.getFileById(SpreadsheetApp.openByUrl(link).getId()).setTrashed(true);
+
+  }
+
+//returns two arrays, first with valid emails, second with invalid emails 
+function validate_(arr){
+  var valid = [], invalid = [];
+  
+  for (var i = 0 ; i < arr.length; i++){
+    if ((arr[i].indexOf("@") > -1) && arr[i].indexOf(".") > -1){   
+      valid.push(arr[i].trim());
+    }
+    else {
+      invalid.push(arr[i]);
+    } 
+  } 
+  return [valid, invalid];
+}
+
