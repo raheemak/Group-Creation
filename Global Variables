@@ -1,0 +1,29 @@
+var CLIENT_ID = ':) ';
+var CLIENT_SECRET = ':p';
+var domain = "<3";
+var pdf_link = ":D"
+var triggerSSheet=  SpreadsheetApp.openById("*.*");
+var access = SpreadsheetApp.openByUrl("^.^").getActiveSheet().getDataRange().getDisplayValues();
+
+/*
+must be authorized with these scopes: 
+https://www.googleapis.com/auth/apps.groups.settings
+https://www.googleapis.com/auth/admin.directory.group
+*/
+
+var headers;
+var respondentEmail;
+var groupName;
+var name;
+var link; 
+var groupOwners = [];
+var validMembers, invalidMembers, validOwners, invalidOwners;
+var description; 
+var whichScope = 0 ; 
+var currentGroup;
+var currentTrigger; 
+
+var triggerSheet;
+
+var range; 
+var size;
