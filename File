@@ -1,0 +1,7 @@
+function fileTransfer(url){
+  var url;
+  var oldFile = DriveApp.getFileById(SpreadsheetApp.openByUrl(url).getId());
+  var newFile = oldFile.makeCopy("New Group Request").getUrl();
+  oldFile.setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.EDIT);
+  return newFile;
+}
